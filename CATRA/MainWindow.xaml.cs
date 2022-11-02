@@ -31,12 +31,32 @@ namespace CATRA
     /// </summary>
     public partial class MainWindow : Window
     {
-        
+        private static TextBox tblog;
+
+        public static TextBox _tblog
+        {
+            get { return tblog; }
+            set { tblog = value; }
+        }
+        MqttFactory mqttFactory = new MqttFactory(new ConsoleLogger());
+
+        MqttServer mqttServer;
+
+
 
         public MainWindow()
         {
             InitializeComponent();
+            _tblog = tb_log;
 
+
+
+
+        }
+        private static void _logify(String logstring)
+        {
+            _tblog.AppendText(LoggingHelper.logify(logstring));
+            _tblog.ScrollToEnd();
 
 
 
@@ -44,8 +64,15 @@ namespace CATRA
         public class ConsoleLogger : IMqttNetLogger
         {
             readonly object _consoleSyncRoot = new();
-
             public bool IsEnabled => true;
+
+
+
+
+
+
+
+
 
             public void Publish(MqttNetLogLevel logLevel, string source, string message, object[]? parameters, Exception? exception)
             {
@@ -78,71 +105,58 @@ namespace CATRA
                 {
                     //Console.ForegroundColor = foregroundColor;
                     Debug.WriteLine(message);
+                    _logify(message);
 
 
                     if (exception != null)
                     {
                         Debug.WriteLine(message);
-                        //logify(exception.Message);
+                        _logify(exception.Message);
                     }
                 }
             }
         }
 
-
-
-
-
-
-
-
-
-        private string logify(String logstring) { 
-        
-        return LoggingHelper.logify(logstring);
-        }
-
         private void btn_checkadmins_Click(object sender, RoutedEventArgs e)
         {
-            MethodContainer.DoCheckAdmins(tb_log);
+            MethodContainer.DoCheckAdmins(_tblog);
         }
         private void btn_provision_Click(object sender, RoutedEventArgs e)
         {
-            MethodContainer.DoProvision(tb_log);
+            MethodContainer.DoProvision(_tblog);
         }
 
         private void btn_unprovision_Click(object sender, RoutedEventArgs e)
         {
-            MethodContainer.DoUnProvision(tb_log);
+            MethodContainer.DoUnProvision(_tblog);
         }
+
 
         private async void btn_start_broker_Click(object sender, RoutedEventArgs e)
         {
 
-            var mqttFactory = new MqttFactory(new ConsoleLogger());
+            var builder = new MqttServerOptionsBuilder()
+            .WithDefaultEndpoint()
+            .WithDefaultEndpointPort(8880)
+            .Build();
+            MqttServerOptions xBuilder = builder;
 
-            var mqttServerOptions = new MqttServerOptionsBuilder().WithDefaultEndpoint().WithDefaultEndpointPort(8880).Build();
-            var mqttServer = mqttFactory.CreateMqttServer(mqttServerOptions);
+            mqttServer = mqttFactory.CreateMqttServer(builder);
             await mqttServer.StartAsync();
 
-                //Console.WriteLine("Press Enter to exit.");
-                //Console.ReadLine();
+            //Console.WriteLine("Press Enter to exit.");
+            //Console.ReadLine();
 
-                // Stop and dispose the MQTT server if it is no longer needed!
-                //await mqttServer.StopAsync();
-            
+            // Stop and dispose the MQTT server if it is no longer needed!
+            //await mqttServer.StopAsync();
+
 
 
         }
 
-        
-
-
-
-
-
-
-
-
+        private async void btn_stop_broker_Click(object sender, RoutedEventArgs e)
+        {
+            await mqttServer.StopAsync();
+        }
     }
 }
